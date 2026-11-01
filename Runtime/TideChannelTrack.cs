@@ -65,7 +65,8 @@ namespace Tide
             private readonly ITideChannelTarget _target;
             private readonly Object _targetObject;
             private readonly int _channel;
-            private readonly float _ownValue;
+            private readonly TideValueType _type;
+            private readonly TideValue _ownValue;
             private readonly List<TideClipSample> _samples = new();
             private bool _driving;
 
@@ -75,7 +76,8 @@ namespace Tide
                 _target = target;
                 _targetObject = targetObject;
                 _channel = channel;
-                _ownValue = target.GetChannelValue(channel);
+                _type = target.GetChannelType(channel);
+                _ownValue = target.GetChannelValue(channel).ConvertTo(_type);
             }
 
             public override void Evaluate(in TideEvaluation evaluation)
@@ -83,21 +85,6 @@ namespace Tide
                 if (_targetObject == null)
                     return;
                 _track.Gather(evaluation, _samples);
-
-                // Mix pairwise through BlendChannel, so discrete channels snap
-                float value = 0f;
-                float total = 0f;
-                foreach (TideClipSample sample in _samples)
-                {
-                    if (sample.Weight <= 0f)
-                        continue;
-                    float clipValue = ((TideChannelClip)_track.Clips[sample.ClipIndex]).Evaluate(sample.LocalTime);
-                    total += sample.Weight;
-                    value = total == sample.Weight
-                        ? clipValue
-                        : _target.BlendChannel(_channel, value, clipValue, sample.Weight / total);
-                }
-
                 if (_samples.Count == 0)
                 {
                     if (_driving)
@@ -105,8 +92,20 @@ namespace Tide
                     _driving = false;
                     return;
                 }
+
+                // Mix pairwise in the channel's type, so discrete channels switch
+                TideValue value = _ownValue;
+                float total = 0f;
+                foreach (TideClipSample sample in _samples)
+                {
+                    if (sample.Weight <= 0f)
+                        continue;
+                    TideValue clipValue = ((TideChannelClip)_track.Clips[sample.ClipIndex]).Evaluate(sample.LocalTime).ConvertTo(_type);
+                    total += sample.Weight;
+                    value = total == sample.Weight ? clipValue : TideValue.Blend(value, clipValue, sample.Weight / total);
+                }
                 if (total < 1f)
-                    value = _target.BlendChannel(_channel, _ownValue, value, total);
+                    value = TideValue.Blend(_ownValue, value, total);
                 _target.SetChannelValue(_channel, value);
                 _driving = true;
             }

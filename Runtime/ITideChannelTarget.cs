@@ -1,9 +1,10 @@
 namespace Tide
 {
     /// <summary>
-    /// A component a channel track can drive: named float channels, read and
-    /// written one at a time. Channels holding discrete values (enums,
-    /// toggles) snap in <see cref="BlendChannel"/> instead of interpolating.
+    /// A component a channel track can drive: named channels, each holding
+    /// one <see cref="TideValueType"/>, read and written one at a time. The
+    /// type decides how clips mix on the channel: continuous values
+    /// interpolate, discrete ones (Int, Bool, Gradient) switch.
     /// </summary>
     public interface ITideChannelTarget
     {
@@ -11,11 +12,11 @@ namespace Tide
 
         string GetChannelName(int index);
 
-        float GetChannelValue(int index);
+        TideValueType GetChannelType(int index);
 
-        void SetChannelValue(int index, float value);
+        TideValue GetChannelValue(int index);
 
-        /// <summary>The value <paramref name="t"/> of the way from <paramref name="from"/> to <paramref name="to"/>.</summary>
-        float BlendChannel(int index, float from, float to, float t);
+        /// <summary>Sets the channel; <paramref name="value"/> is of the channel's type.</summary>
+        void SetChannelValue(int index, TideValue value);
     }
 }

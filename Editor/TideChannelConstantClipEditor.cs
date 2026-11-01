@@ -10,16 +10,22 @@ namespace Tide.Editor
         public override void OnToolsGUI(TideClipEditorContext context)
         {
             var clip = (TideChannelConstantClip)context.Clip;
-            if (!context.TryChannel(out ITideChannelTarget target, out int index))
+            if (!context.TryChannel(out _, out _))
                 return;
             if (GUILayout.Button("Value ← Scene"))
-                context.ReadScene(() => context.Edit("Capture Value", () => clip.Value = target.GetChannelValue(index)));
+            {
+                context.ReadScene(() =>
+                {
+                    if (context.TryReadChannel(out TideValue value))
+                        context.Edit("Capture Value", () => clip.Value = value);
+                });
+            }
         }
 
         public override void Initialise(TideClipEditorContext context)
         {
-            if (context.TryChannel(out ITideChannelTarget target, out int index))
-                ((TideChannelConstantClip)context.Clip).Value = target.GetChannelValue(index);
+            if (context.TryReadChannel(out TideValue value))
+                ((TideChannelConstantClip)context.Clip).Value = value;
         }
     }
 }

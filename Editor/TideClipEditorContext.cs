@@ -40,6 +40,16 @@ namespace Tide.Editor
         /// <summary>Switches the window to another player, e.g. a sub-timeline's.</summary>
         public void OpenPlayer(TidePlayer player) => _openPlayer(player);
 
+        /// <summary>The scene's current value of the channel a channel track drives, in the channel's type.</summary>
+        public bool TryReadChannel(out TideValue value)
+        {
+            value = default;
+            if (!TryChannel(out ITideChannelTarget target, out int index))
+                return false;
+            value = target.GetChannelValue(index).ConvertTo(target.GetChannelType(index));
+            return true;
+        }
+
         /// <summary>The channel a channel track drives on its binding.</summary>
         public bool TryChannel(out ITideChannelTarget target, out int index)
         {

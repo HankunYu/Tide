@@ -4,7 +4,7 @@ using UnityEngine.Scripting.APIUpdating;
 
 namespace Tide
 {
-    /// <summary>Plays a curve on the channel, keyed in clip-local seconds.</summary>
+    /// <summary>Plays a curve on a scalar channel, keyed in clip-local seconds.</summary>
     [Serializable]
     [MovedFrom(false, "GaussianSplatting.Runtime", "GaussianSplatting", "GaussianChannelCurveClip")]
     public class TideChannelCurveClip : TideChannelClip
@@ -17,7 +17,7 @@ namespace Tide
             set => curve = value;
         }
 
-        public override float Evaluate(double localTime)
+        public override TideValue Evaluate(double localTime)
         {
             return curve != null && curve.length > 0 ? curve.Evaluate((float)localTime) : 0f;
         }

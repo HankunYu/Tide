@@ -435,15 +435,35 @@ namespace Tide.Editor
             GUI.Label(labelRect, clip.DisplayName, EditorStyles.whiteMiniLabel);
         }
 
+        // Scalars as a curve on the track's scale; colours and gradients as a
+        // strip of the colours they take over the clip
         private void DrawChannelCurve(TideChannelClip clip, Rect rect, Vector2 range)
         {
             const int Steps = 32;
+            TideValueType type = clip.Evaluate(0.0).Type;
+            if (type is TideValueType.Color or TideValueType.Gradient)
+            {
+                float stripTop = rect.y + 16f;
+                float stripHeight = Mathf.Max(2f, rect.yMax - 3f - stripTop);
+                for (int s = 0; s < Steps; s++)
+                {
+                    TideValue value = clip.Evaluate(clip.Duration * (s + 0.5) / Steps);
+                    Color c = type == TideValueType.Gradient
+                        ? (value.AsGradient != null ? value.AsGradient.Evaluate((s + 0.5f) / Steps) : Color.white)
+                        : value.AsColor;
+                    c.a = 1f;
+                    float x0 = rect.x + rect.width * s / Steps;
+                    float x1 = rect.x + rect.width * (s + 1) / Steps;
+                    EditorGUI.DrawRect(new Rect(x0, stripTop, x1 - x0 + 0.5f, stripHeight), c);
+                }
+                return;
+            }
             var points = new Vector3[Steps + 1];
             float span = Mathf.Max(range.y - range.x, 1e-5f);
             for (int s = 0; s <= Steps; s++)
             {
                 double local = clip.Duration * s / Steps;
-                float v = (clip.Evaluate(local) - range.x) / span;
+                float v = (clip.Evaluate(local).Scalar() - range.x) / span;
                 points[s] = new Vector3(rect.x + rect.width * s / Steps, rect.yMax - 4f - v * (rect.height - 16f));
             }
             Handles.color = new Color(1f, 1f, 1f, 0.8f);
@@ -461,7 +481,7 @@ namespace Tide.Editor
                     continue;
                 for (int s = 0; s <= 8; s++)
                 {
-                    float v = channelClip.Evaluate(clip.Duration * s / 8);
+                    float v = channelClip.Evaluate(clip.Duration * s / 8).Scalar();
                     min = Mathf.Min(min, v);
                     max = Mathf.Max(max, v);
                 }

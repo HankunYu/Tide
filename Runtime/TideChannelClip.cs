@@ -6,6 +6,6 @@ namespace Tide
     [Serializable]
     public abstract class TideChannelClip : TideClip
     {
-        public abstract float Evaluate(double localTime);
+        public abstract TideValue Evaluate(double localTime);
     }
 }

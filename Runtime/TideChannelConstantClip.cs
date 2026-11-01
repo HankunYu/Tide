@@ -9,17 +9,17 @@ namespace Tide
     [MovedFrom(false, "GaussianSplatting.Runtime", "GaussianSplatting", "GaussianChannelConstantClip")]
     public class TideChannelConstantClip : TideChannelClip
     {
-        [SerializeField] private float value;
+        [SerializeField] private TideValue value = TideValue.Float(0f);
 
-        public float Value
+        public TideValue Value
         {
             get => value;
             set => this.value = value;
         }
 
-        public override string DisplayName => string.IsNullOrEmpty(Name) ? value.ToString("0.###") : Name;
+        public override string DisplayName => string.IsNullOrEmpty(Name) ? value.ToString() : Name;
 
-        public override float Evaluate(double localTime)
+        public override TideValue Evaluate(double localTime)
         {
             return value;
         }
