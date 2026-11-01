@@ -18,6 +18,7 @@ namespace Tide.Editor
         private SerializedProperty _playOnStart;
         private SerializedProperty _wrapMode;
         private SerializedProperty _playbackSpeed;
+        private SerializedProperty _skipUnchangedChannels;
 
         private void OnEnable()
         {
@@ -27,6 +28,7 @@ namespace Tide.Editor
             _playOnStart = serializedObject.FindProperty("playOnStart");
             _wrapMode = serializedObject.FindProperty("wrapMode");
             _playbackSpeed = serializedObject.FindProperty("playbackSpeed");
+            _skipUnchangedChannels = serializedObject.FindProperty("skipUnchangedChannels");
         }
 
         public override void OnInspectorGUI()
@@ -46,6 +48,7 @@ namespace Tide.Editor
             EditorGUILayout.PropertyField(_playOnStart);
             EditorGUILayout.PropertyField(_wrapMode);
             EditorGUILayout.PropertyField(_playbackSpeed);
+            EditorGUILayout.PropertyField(_skipUnchangedChannels);
             serializedObject.ApplyModifiedProperties();
 
             if (GUILayout.Button("Open Timeline Editor"))

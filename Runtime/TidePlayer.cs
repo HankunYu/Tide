@@ -48,6 +48,9 @@ namespace Tide
         [Tooltip("While bound, set the time every phase target and TideClock reader follows, not only what the tracks drive, so each frame depends on the timeline alone (repeatable captures). Leave it on for the scene's main timeline only")]
         [SerializeField] private bool drivesSceneClock = true;
 
+        [Tooltip("During playback, write a channel only when its value changes, so clips holding a value cost nothing. Seeks, pauses and scrubs still write every channel. Turn it off if something else changes driven values mid-clip and the timeline should keep overriding them every frame")]
+        [SerializeField] private bool skipUnchangedChannels = true;
+
         [SerializeField] private List<TideBinding> bindings = new();
 
         private readonly List<TideTrackInstance> _instances = new();
@@ -149,6 +152,13 @@ namespace Tide
                 drivesSceneClock = value;
                 Rebind();
             }
+        }
+
+        /// <summary>Whether channel tracks skip writing a value they already wrote, during playback.</summary>
+        public bool SkipUnchangedChannels
+        {
+            get => skipUnchangedChannels;
+            set => skipUnchangedChannels = value;
         }
 
         public double CurrentTime => _time;

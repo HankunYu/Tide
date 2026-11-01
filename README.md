@@ -14,7 +14,9 @@ time is worked out ahead, so any moment can be looked up directly.
   markers and nested sub-timelines.
 - **Typed channels:** float, int, bool, colour (HDR), vectors and gradients.
   Continuous values interpolate across eases and crossfades; discrete ones
-  (int, bool, gradient) switch halfway.
+  (int, bool, gradient) switch halfway. During playback a channel is only
+  written when its value changes, so a clip holding a value costs nothing
+  (*Skip Unchanged Channels* on the player); seeks always write.
 - **Material channels:** `TideMaterialChannels` exposes every parameter a
   renderer's shader shows in the inspector, written through a
   MaterialPropertyBlock so the material asset is never touched.

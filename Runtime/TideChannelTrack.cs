@@ -56,12 +56,13 @@ namespace Tide
                 Debug.LogWarning($"Timeline track '{Name}': {binding.name} has no channel '{channel}'", binding);
                 return null;
             }
-            return new Instance(this, target, binding, index);
+            return new Instance(this, player, target, binding, index);
         }
 
         private sealed class Instance : TideTrackInstance
         {
             private readonly TideChannelTrack _track;
+            private readonly TidePlayer _player;
             private readonly ITideChannelTarget _target;
             private readonly Object _targetObject;
             private readonly int _channel;
@@ -69,10 +70,14 @@ namespace Tide
             private readonly TideValue _ownValue;
             private readonly List<TideClipSample> _samples = new();
             private bool _driving;
+            // The value this track last gave the channel, valid while _hasWritten
+            private TideValue _written;
+            private bool _hasWritten;
 
-            public Instance(TideChannelTrack track, ITideChannelTarget target, Object targetObject, int channel)
+            public Instance(TideChannelTrack track, TidePlayer player, ITideChannelTarget target, Object targetObject, int channel)
             {
                 _track = track;
+                _player = player;
                 _target = target;
                 _targetObject = targetObject;
                 _channel = channel;
@@ -85,10 +90,12 @@ namespace Tide
                 if (_targetObject == null)
                     return;
                 _track.Gather(evaluation, _samples);
+                // Playback may skip a value already written; any other evaluation writes it again
+                bool force = !evaluation.Continuous || !_player.SkipUnchangedChannels;
                 if (_samples.Count == 0)
                 {
                     if (_driving)
-                        _target.SetChannelValue(_channel, _ownValue);
+                        Write(_ownValue, force);
                     _driving = false;
                     return;
                 }
@@ -106,14 +113,24 @@ namespace Tide
                 }
                 if (total < 1f)
                     value = TideValue.Blend(_ownValue, value, total);
-                _target.SetChannelValue(_channel, value);
+                Write(value, force);
                 _driving = true;
             }
 
             public override void Restore()
             {
+                _hasWritten = false;
                 if (_targetObject != null)
                     _target.SetChannelValue(_channel, _ownValue);
+            }
+
+            private void Write(TideValue value, bool force)
+            {
+                if (!force && _hasWritten && value.Equals(_written))
+                    return;
+                _target.SetChannelValue(_channel, value);
+                _written = value;
+                _hasWritten = true;
             }
 
             public override void CollectPhaseTargets(List<ITidePhaseTarget> targets)
