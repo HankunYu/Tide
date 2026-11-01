@@ -71,6 +71,12 @@ namespace Tide
             set => postExtrapolation = value;
         }
 
+        /// <summary>
+        /// True when the clip holds one state over its span, so its output
+        /// changes only at its edges and over its eases.
+        /// </summary>
+        public virtual bool IsStatic => false;
+
         /// <summary>Label for the clip when it has no name of its own.</summary>
         public virtual string DisplayName => string.IsNullOrEmpty(name) ? GetType().Name : name;
 

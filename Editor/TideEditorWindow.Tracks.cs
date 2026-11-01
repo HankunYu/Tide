@@ -42,6 +42,8 @@ namespace Tide.Editor
             // Group rows: the GameObject the group's tracks drive (null = unbound)
             public GameObject Group;
             public TideTrack Track;
+            // Highlighted while active tracks are on top: something in the row is changing
+            public bool Active;
             public float Y;
             public float Height;
         }
@@ -63,6 +65,10 @@ namespace Tide.Editor
         {
             int dragControl = GUIUtility.GetControlID(FocusType.Passive);
             float top = EditorStyles.toolbar.fixedHeight;
+            // Before any control: a clicked button, foldout or object field keeps keyboard focus
+            // and would otherwise take Space (or open its picker) instead of the timeline
+            if (timeline != null)
+                HandleKeys();
             DrawToolbar();
 
             var details = new Rect(position.width - DetailsWidth, top, DetailsWidth, position.height - top);
@@ -78,8 +84,7 @@ namespace Tide.Editor
                 return;
             }
 
-            BuildRows();
-            float contentHeight = _rows.Count > 0 ? _rows[^1].Y + _rows[^1].Height : 0f;
+            float contentHeight = BuildRows();
             var rowsView = new Rect(0f, top + RulerHeight, main.width, main.height - RulerHeight);
             bool scrollbar = contentHeight > rowsView.height;
             float contentWidth = rowsView.width - (scrollbar ? ScrollbarWidth : 0f);
@@ -94,10 +99,10 @@ namespace Tide.Editor
             HandleRowMouse(dragControl, contentWidth);
             HandleDragAndDrop(new Rect(0f, 0f, contentWidth, Mathf.Max(contentHeight, rowsView.height)));
             GUI.EndScrollView();
+            DrawNoMatch(rowsView);
 
             DrawPlayhead(new Rect(HeaderWidth, top, _timelineWidth, main.height));
             HandleDrag(dragControl);
-            HandleKeys();
         }
 
         // ------------------------------------------------------------------ toolbar
@@ -106,20 +111,9 @@ namespace Tide.Editor
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                var newPlayer = (TidePlayer)EditorGUILayout.ObjectField(player, typeof(TidePlayer), true,
-                    GUILayout.Width(170f));
-                if (newPlayer != player)
-                    SetPlayer(newPlayer);
-
-                var newTimeline = (TideTimeline)EditorGUILayout.ObjectField(timeline, typeof(TideTimeline), false,
-                    GUILayout.Width(170f));
-                if (newTimeline != timeline)
-                    AssignTimeline(newTimeline);
-
-                if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(40f)))
-                    CreateTimeline();
-
-                GUILayout.Space(8f);
+                // Left: finding tracks and playback; right: what the window edits
+                DrawFilterField();
+                GUILayout.Space(6f);
                 if (GUILayout.Button(EditorGUIUtility.IconContent("Animation.FirstKey"), EditorStyles.toolbarButton, GUILayout.Width(28f)))
                     SetTime(0.0);
                 if (GUILayout.Button(EditorGUIUtility.IconContent(IsPlaying ? "PauseButton" : "PlayButton"), EditorStyles.toolbarButton,
@@ -150,6 +144,18 @@ namespace Tide.Editor
                 }
 
                 GUILayout.FlexibleSpace();
+                var newPlayer = (TidePlayer)EditorGUILayout.ObjectField(player, typeof(TidePlayer), true,
+                    GUILayout.Width(170f));
+                if (newPlayer != player)
+                    SetPlayer(newPlayer);
+
+                var newTimeline = (TideTimeline)EditorGUILayout.ObjectField(timeline, typeof(TideTimeline), false,
+                    GUILayout.Width(170f));
+                if (newTimeline != timeline)
+                    AssignTimeline(newTimeline);
+
+                if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(40f)))
+                    CreateTimeline();
                 if (GUILayout.Button("Fit", EditorStyles.toolbarButton, GUILayout.Width(32f)))
                     FitView();
             }
@@ -206,47 +212,59 @@ namespace Tide.Editor
 
         // ------------------------------------------------------------------ rows
 
-        private void BuildRows()
+        // Lays out the rows (active ones first when sorting) and returns their height
+        private float BuildRows()
         {
             _rows.Clear();
-            var groups = new List<GameObject>();
-            var tracksByGroup = new Dictionary<GameObject, List<TideTrack>>();
-            var unbound = new List<TideTrack>();
+            var groups = new List<RowGroup>();
+            var byObject = new Dictionary<GameObject, RowGroup>();
+            var unbound = new RowGroup { Tracks = new List<TideTrack>(), Collapsed = _unboundCollapsed };
+            _totalTracks = 0;
+            _shownTracks = 0;
             foreach (TideTrack track in timeline.Tracks)
             {
                 if (track == null)
                     continue;
-                GameObject group = BoundGameObject(track);
-                if (group == null)
+                _totalTracks++;
+                GameObject boundObject = BoundGameObject(track);
+                if (!MatchesFilter(track, boundObject))
+                    continue;
+                _shownTracks++;
+                if (boundObject == null)
                 {
-                    unbound.Add(track);
+                    unbound.Tracks.Add(track);
                     continue;
                 }
-                if (!tracksByGroup.TryGetValue(group, out List<TideTrack> tracks))
+                if (!byObject.TryGetValue(boundObject, out RowGroup group))
                 {
-                    tracks = new List<TideTrack>();
-                    tracksByGroup.Add(group, tracks);
+                    group = new RowGroup { Group = boundObject, Tracks = new List<TideTrack>(), Collapsed = _collapsed.Contains(boundObject) };
+                    byObject.Add(boundObject, group);
                     groups.Add(group);
                 }
-                tracks.Add(track);
+                group.Tracks.Add(track);
             }
+            if (unbound.Tracks.Count > 0)
+                groups.Add(unbound);
+            if (activeOnTop)
+                SortByActivity(groups);
 
             float y = 0f;
-            foreach (GameObject group in groups)
-                AddGroup(group, tracksByGroup[group], _collapsed.Contains(group), ref y);
-            if (unbound.Count > 0)
-                AddGroup(null, unbound, _unboundCollapsed, ref y);
+            foreach (RowGroup group in groups)
+                AddGroup(group, ref y);
+            AnimateRows();
+            return y;
         }
 
-        private void AddGroup(GameObject group, List<TideTrack> tracks, bool collapsed, ref float y)
+        private void AddGroup(RowGroup group, ref float y)
         {
-            _rows.Add(new Row { IsGroup = true, Group = group, Y = y, Height = GroupHeight });
+            bool active = group.Tracks.Any(IsActive);
+            _rows.Add(new Row { IsGroup = true, Group = group.Group, Active = active, Y = y, Height = GroupHeight });
             y += GroupHeight;
-            if (collapsed)
+            if (group.Collapsed)
                 return;
-            foreach (TideTrack track in tracks)
+            foreach (TideTrack track in group.Tracks)
             {
-                _rows.Add(new Row { Track = track, Group = group, Y = y, Height = TrackHeight });
+                _rows.Add(new Row { Track = track, Group = group.Group, Active = IsActive(track), Y = y, Height = TrackHeight });
                 y += TrackHeight;
             }
         }
@@ -272,6 +290,7 @@ namespace Tide.Editor
             if (Event.current.type == EventType.Repaint)
                 DrawOutOfRange(timelineArea);
 
+            bool activeSeen = false;
             for (int i = 0; i < _rows.Count; i++)
             {
                 Row row = _rows[i];
@@ -280,6 +299,7 @@ namespace Tide.Editor
                 if (row.IsGroup)
                 {
                     DrawGroupRow(row, header, lane);
+                    DrawActiveSeparator(row, contentWidth, ref activeSeen);
                     continue;
                 }
 
@@ -287,21 +307,42 @@ namespace Tide.Editor
                 if (Event.current.type == EventType.Repaint)
                 {
                     Color background = selected ? TideStyles.RowSelected
+                        : row.Active ? TideStyles.RowActive
                         : i % 2 == 0 ? TideStyles.RowEven : TideStyles.RowOdd;
                     EditorGUI.DrawRect(header, background);
                     EditorGUI.DrawRect(new Rect(lane.x, lane.y, lane.width, lane.height - 1f), background * 0.85f);
-                    EditorGUI.DrawRect(new Rect(header.x, header.y, 4f, header.height - 1f), TideStyles.TrackColor(row.Track));
+                    // Active tracks get a wider, brighter strip; dimming would read as muted
+                    Color strip = TideStyles.TrackColor(row.Track);
+                    float stripWidth = row.Active ? 7f : 4f;
+                    if (row.Active)
+                        strip = Color.Lerp(strip, Color.white, 0.35f);
+                    EditorGUI.DrawRect(new Rect(header.x, header.y, stripWidth, header.height - 1f), strip);
                 }
                 DrawTrackHeader(row.Track, header);
                 DrawLane(row.Track, lane);
             }
         }
 
+        // Marks where the active groups end
+        private void DrawActiveSeparator(Row row, float contentWidth, ref bool activeSeen)
+        {
+            if (!activeOnTop || Event.current.type != EventType.Repaint)
+                return;
+            if (row.Active)
+            {
+                activeSeen = true;
+                return;
+            }
+            if (activeSeen)
+                EditorGUI.DrawRect(new Rect(0f, row.Y - 1f, contentWidth, 2f), TideStyles.ActiveSeparator);
+            activeSeen = false;
+        }
+
         private void DrawGroupRow(Row row, Rect header, Rect lane)
         {
             if (Event.current.type == EventType.Repaint)
             {
-                EditorGUI.DrawRect(header, TideStyles.GroupRow);
+                EditorGUI.DrawRect(header, row.Active ? TideStyles.GroupRowActive : TideStyles.GroupRow);
                 EditorGUI.DrawRect(lane, TideStyles.GroupRow);
             }
             bool collapsed = row.Group != null ? _collapsed.Contains(row.Group) : _unboundCollapsed;
@@ -379,6 +420,9 @@ namespace Tide.Editor
             if (track.Muted)
                 color = Color.Lerp(color, TideStyles.Muted, 0.7f);
 
+            // Clip to the lane, keeping the window's coordinates: clips that start before the view would
+            // otherwise spill over the track headers
+            GUI.BeginClip(lane, -lane.position, Vector2.zero, false);
             if (track is TideClipTrack clipTrack)
             {
                 Vector2 range = ChannelRange(clipTrack);
@@ -396,6 +440,7 @@ namespace Tide.Editor
                 foreach (TideMarker marker in markerTrack.Markers)
                     DrawMarker(marker, lane, color);
             }
+            GUI.EndClip();
         }
 
         private void DrawClip(TideClip clip, Rect rect, Rect lane, Color color, double gapEnd, Vector2 channelRange)
@@ -431,7 +476,9 @@ namespace Tide.Editor
             if (selected)
                 Handles.DrawSolidRectangleWithOutline(new Rect(rect.x + 1f, rect.y + 1f, rect.width - 2f, rect.height - 2f), Color.clear, outline);
 
-            var labelRect = new Rect(rect.x + 4f, rect.y + 1f, Mathf.Max(0f, rect.width - 8f), 16f);
+            // The label follows the visible part of the clip
+            float labelX = Mathf.Max(rect.x, lane.x);
+            var labelRect = new Rect(labelX + 4f, rect.y + 1f, Mathf.Max(0f, rect.xMax - labelX - 8f), 16f);
             GUI.Label(labelRect, clip.DisplayName, EditorStyles.whiteMiniLabel);
         }
 
@@ -520,8 +567,10 @@ namespace Tide.Editor
         private void DrawHeaderCorner(Rect rect)
         {
             EditorGUI.DrawRect(rect, TideStyles.Ruler);
-            string label = PlayerPlaysTimeline ? player.name : timeline.name;
-            GUI.Label(new Rect(rect.x + 6f, rect.y + 3f, rect.width - 12f, rect.height - 6f), label, EditorStyles.miniLabel);
+            var toggle = new Rect(rect.x + 3f, rect.y + 2f, 26f, rect.height - 4f);
+            DrawActiveOnTopToggle(toggle);
+            string label = (PlayerPlaysTimeline ? player.name : timeline.name) + FilterSummary;
+            GUI.Label(new Rect(toggle.xMax + 4f, rect.y + 3f, rect.xMax - toggle.xMax - 10f, rect.height - 6f), label, EditorStyles.miniLabel);
         }
 
         private void DrawRuler(Rect rect, int dragControl)
@@ -834,7 +883,10 @@ namespace Tide.Editor
         private void HandleKeys()
         {
             Event e = Event.current;
-            if (e.type != EventType.KeyDown || GUIUtility.keyboardControl != 0)
+            if (HandleFilterKeys(e))
+                return;
+            // Text being typed keeps its keys
+            if (e.type != EventType.KeyDown || EditorGUIUtility.editingTextField)
                 return;
             switch (e.keyCode)
             {
@@ -857,7 +909,7 @@ namespace Tide.Editor
                 case KeyCode.RightArrow:
                     SetTime(Math.Round(time / FrameDuration + 1.0) * FrameDuration);
                     break;
-                case KeyCode.F:
+                case KeyCode.F when !e.control && !e.command:
                     FitView();
                     break;
                 default:

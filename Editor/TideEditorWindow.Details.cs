@@ -81,7 +81,7 @@ namespace Tide.Editor
                 "Right-click a lane to add clips, a clip or track header for more.\n" +
                 "Drag clips to move, their edges to trim (Shift: no snapping).\n" +
                 "Ctrl/Alt + wheel zooms, Shift + wheel or middle-drag pans.\n" +
-                "Space plays, arrows step frames, Home/End jump, F fits, Delete removes.",
+                "Space plays, arrows step frames, Home/End jump, F fits, Delete removes, Ctrl+F filters tracks by name.",
                 MessageType.None);
         }
 

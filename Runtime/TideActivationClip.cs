@@ -8,6 +8,8 @@ namespace Tide
     [MovedFrom(false, "GaussianSplatting.Runtime", "GaussianSplatting", "GaussianActivationClip")]
     public class TideActivationClip : TideClip
     {
+        public override bool IsStatic => true;
+
         public override string DisplayName => string.IsNullOrEmpty(Name) ? "Active" : Name;
     }
 }

@@ -20,6 +20,9 @@ namespace Tide.Editor
         public static readonly Color ClipSelected = Color.white;
         public static readonly Color Ease = new(0f, 0f, 0f, 0.35f);
         public static readonly Color Muted = new(0.4f, 0.4f, 0.4f);
+        public static readonly Color RowActive = new(0.30f, 0.26f, 0.19f);
+        public static readonly Color GroupRowActive = new(0.22f, 0.18f, 0.12f);
+        public static readonly Color ActiveSeparator = new(1f, 0.75f, 0.3f, 0.8f);
 
         public static Color TrackColor(TideTrack track)
         {

@@ -17,6 +17,8 @@ namespace Tide
             set => this.value = value;
         }
 
+        public override bool IsStatic => true;
+
         public override string DisplayName => string.IsNullOrEmpty(Name) ? value.ToString() : Name;
 
         public override TideValue Evaluate(double localTime)

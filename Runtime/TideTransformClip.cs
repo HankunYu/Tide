@@ -67,6 +67,9 @@ namespace Tide
             set => shape = value;
         }
 
+        public override bool IsStatic =>
+            fromPosition == toPosition && fromRotation == toRotation && fromScale == toScale;
+
         public void Evaluate(double localTime, out Vector3 position, out Quaternion rotation, out Vector3 scale)
         {
             float t = (float)(localTime / Duration);

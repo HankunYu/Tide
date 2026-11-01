@@ -36,6 +36,8 @@ namespace Tide
             set => shape = value;
         }
 
+        public override bool IsStatic => from.Equals(to);
+
         public override string DisplayName =>
             string.IsNullOrEmpty(Name) ? $"{from} → {to}" : Name;
 
