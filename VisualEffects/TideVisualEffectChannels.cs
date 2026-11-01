@@ -16,7 +16,8 @@ namespace Tide
     public class TideVisualEffectChannels : MonoBehaviour, ITideChannelTarget
     {
         private VisualEffect _effect;
-        private VisualEffectAsset _channelsAsset;
+        // Not kept over a domain reload, which empties the readonly lists it keys
+        [NonSerialized] private VisualEffectAsset _channelsAsset;
         private readonly List<VFXExposedProperty> _exposed = new();
         private readonly List<string> _names = new();
         private readonly List<TideValueType> _types = new();

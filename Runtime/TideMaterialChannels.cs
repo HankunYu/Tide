@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -24,7 +25,8 @@ namespace Tide
 
         private Renderer _renderer;
         private MaterialPropertyBlock _block;
-        private Shader _channelsShader;
+        // Not kept over a domain reload, which empties the readonly lists it keys
+        [NonSerialized] private Shader _channelsShader;
         private readonly List<string> _names = new();
         private readonly List<TideValueType> _types = new();
         private readonly Dictionary<int, TideValue> _overrides = new();
