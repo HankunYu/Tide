@@ -1,0 +1,25 @@
+{
+    "name": "Tide.VFX",
+    "rootNamespace": "Tide",
+    "references": [
+        "GUID:6146dd66dd8740c59d40e4d8d68c223c",
+        "Unity.VisualEffectGraph.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "TIDE_VFX"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.visualeffectgraph",
+            "expression": "",
+            "define": "TIDE_VFX"
+        }
+    ],
+    "noEngineReferences": false
+}
