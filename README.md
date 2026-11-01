@@ -9,9 +9,20 @@ time is worked out ahead, so any moment can be looked up directly.
 
 - **Clip tracks** with ease in/out, crossfades between overlapping clips and
   pre/post extrapolation (hold, loop).
-- **Built-in tracks:** channel (any float a component exposes), activation,
+- **Built-in tracks:** channel (any value a component exposes), activation,
   transform, animation (Animator clips, crossfaded, in edit mode too), audio,
   markers and nested sub-timelines.
+- **Typed channels:** float, int, bool, colour (HDR), vectors and gradients.
+  Continuous values interpolate across eases and crossfades; discrete ones
+  (int, bool, gradient) switch halfway.
+- **Material channels:** `TideMaterialChannels` exposes every parameter a
+  renderer's shader shows in the inspector, written through a
+  MaterialPropertyBlock so the material asset is never touched.
+- **Visual effects** (when the VFX Graph package is installed, in the
+  `Tide.VFX` assembly): `TideVisualEffectChannels` exposes a graph's exposed
+  properties, and the visual effect track plays an effect during its clips.
+  Seeking into a clip restarts the effect and simulates it up to that moment,
+  and edit mode steps the simulation, so scrubbing shows the particles.
 - **Phase integration:** components whose effects accumulate at an adjustable
   rate (a speed you can animate) implement `ITidePhaseTarget`; the player
   integrates their rates over the whole timeline into a table when it binds,
@@ -49,8 +60,8 @@ track, so one timeline can be played by several players.
 
 ## Extending
 
-- **Channels:** implement `ITideChannelTarget` on a component to expose named
-  float channels to channel tracks.
+- **Channels:** implement `ITideChannelTarget` on a component to expose named,
+  typed channels (`TideValue`) to channel tracks.
 - **Tracks and clips:** subclass `TideClipTrack` (or `TideTrack`) and `TideClip`.
   The editor finds new types on its own. `[TideDisplay("Name", r, g, b)]`
   gives a track its name and colour in the editor.
