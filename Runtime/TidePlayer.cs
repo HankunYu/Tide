@@ -51,6 +51,8 @@ namespace Tide
         [SerializeField] private List<TideBinding> bindings = new();
 
         private readonly List<TideTrackInstance> _instances = new();
+        // The track and target each instance was created for, by index
+        private readonly List<(TideTrack Track, Object Target)> _instanceKeys = new();
         private readonly List<TideTrackInstance> _phaseInstances = new();
         private TidePhaseTable _phaseTable;
         private bool _bound;
@@ -308,17 +310,8 @@ namespace Tide
             if (!Application.isPlaying)
                 s_editModeBound.Add(this);
 #endif
-            foreach (TideTrack track in timeline.Tracks)
-            {
-                if (track == null || track.Muted)
-                    continue;
-                Object target = GetBinding(track);
-                if (target == null ? !track.BindingOptional : !track.CanBind(target))
-                    continue;
-                TideTrackInstance instance = track.CreateInstance(this, target);
-                if (instance != null)
-                    _instances.Add(instance);
-            }
+            foreach ((TideTrack Track, Object Target) key in BindableTracks())
+                AddInstance(key, null);
             BuildPhaseTable();
         }
 
@@ -336,20 +329,75 @@ namespace Tide
             for (int i = _instances.Count - 1; i >= 0; i--)
                 _instances[i].Restore();
             _instances.Clear();
+            _instanceKeys.Clear();
             _phaseInstances.Clear();
             _phaseTable?.Release();
             _phaseTable = null;
             TideClock.Release(this);
         }
 
-        /// <summary>Recreates the track instances after the timeline or a binding changed.</summary>
+        /// <summary>
+        /// Brings the track instances in line after the timeline or a binding
+        /// changed. Tracks whose target is unchanged keep their instances, so
+        /// what they drive carries on (a playing effect is not restarted);
+        /// removed, muted or rebound tracks put their targets back, and new
+        /// ones bind. Then evaluates on from the current time.
+        /// </summary>
         public void Rebind()
         {
             if (!_bound)
                 return;
-            Unbind();
-            Bind();
-            EvaluateAt(_time, _time, false, false);
+            if (timeline == null)
+            {
+                Unbind();
+                return;
+            }
+            List<(TideTrack Track, Object Target)> wanted = BindableTracks().ToList();
+            var kept = new Dictionary<(TideTrack, Object), TideTrackInstance>();
+            // Last bound first, as in Unbind
+            for (int i = _instances.Count - 1; i >= 0; i--)
+            {
+                if (wanted.Contains(_instanceKeys[i]))
+                    kept[_instanceKeys[i]] = _instances[i];
+                else
+                    _instances[i].Restore();
+            }
+
+            _instances.Clear();
+            _instanceKeys.Clear();
+            foreach ((TideTrack Track, Object Target) key in wanted)
+                AddInstance(key, kept.TryGetValue(key, out TideTrackInstance instance) ? instance : null);
+
+            _phaseInstances.Clear();
+            _phaseTable?.Release();
+            _phaseTable = null;
+            BuildPhaseTable();
+            // Continuous: kept instances play on, and a new one treats its first evaluation as a jump
+            EvaluateAt(_time, _time, true, false);
+        }
+
+        // The unmuted tracks that can bind, with their targets, in timeline order
+        private IEnumerable<(TideTrack Track, Object Target)> BindableTracks()
+        {
+            foreach (TideTrack track in timeline.Tracks)
+            {
+                if (track == null || track.Muted)
+                    continue;
+                Object target = GetBinding(track);
+                if (target == null ? !track.BindingOptional : !track.CanBind(target))
+                    continue;
+                yield return (track, target);
+            }
+        }
+
+        // Adds an existing instance, or creates one for the track
+        private void AddInstance((TideTrack Track, Object Target) key, TideTrackInstance instance)
+        {
+            instance ??= key.Track.CreateInstance(this, key.Target);
+            if (instance == null)
+                return;
+            _instances.Add(instance);
+            _instanceKeys.Add(key);
         }
 
         // ------------------------------------------------------------------ sub-timelines

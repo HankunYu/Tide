@@ -108,6 +108,9 @@ namespace Tide
                 _effect.pause = _ownPause;
                 if (!Application.isPlaying)
                     _effect.Reinit();
+                else if (_activeClip >= 0)
+                    // The track is playing it (muted or unbound mid-play): stop spawning and let live particles finish
+                    _effect.Stop();
             }
 
             private void Simulate(double seconds)
