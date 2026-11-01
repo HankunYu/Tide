@@ -71,10 +71,11 @@ namespace Tide.Editor
                 HandleKeys();
             DrawToolbar();
 
-            var details = new Rect(position.width - DetailsWidth, top, DetailsWidth, position.height - top);
-            var main = new Rect(0f, top, position.width - DetailsWidth, position.height - top);
+            float detailsWidth = detailsVisible ? DetailsWidth : 0f;
+            var main = new Rect(0f, top, position.width - detailsWidth, position.height - top);
             EditorGUI.DrawRect(main, TideStyles.Background);
-            DrawDetails(details);
+            if (detailsVisible)
+                DrawDetails(new Rect(main.xMax, top, detailsWidth, main.height));
 
             if (timeline == null)
             {
@@ -158,6 +159,7 @@ namespace Tide.Editor
                     CreateTimeline();
                 if (GUILayout.Button("Fit", EditorStyles.toolbarButton, GUILayout.Width(32f)))
                     FitView();
+                detailsVisible = GUILayout.Toggle(detailsVisible, "Details", EditorStyles.toolbarButton, GUILayout.Width(52f));
             }
         }
 

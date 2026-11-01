@@ -29,6 +29,7 @@ namespace Tide.Editor
         [SerializeField] private double viewStart;
         [SerializeField] private float pixelsPerSecond = 80f;
         [SerializeField] private bool previewEnabled = true;
+        [SerializeField] private bool detailsVisible = true;
 
         private bool _playing;
         private double _lastTick;
