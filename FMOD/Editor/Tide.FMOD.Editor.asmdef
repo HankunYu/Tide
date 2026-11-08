@@ -1,0 +1,24 @@
+{
+    "name": "Tide.FMOD.Editor",
+    "rootNamespace": "Tide.Editor",
+    "references": [
+        "GUID:6146dd66dd8740c59d40e4d8d68c223c",
+        "GUID:bffaeef550254d8e8ff497bf28fcb2e1",
+        "Tide.FMOD",
+        "FMODUnity",
+        "FMODUnityEditor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "TIDE_FMOD"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

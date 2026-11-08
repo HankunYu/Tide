@@ -25,6 +25,12 @@ time is worked out ahead, so any moment can be looked up directly.
   properties, and the visual effect track plays an effect during its clips.
   Seeking into a clip restarts the effect and simulates it up to that moment,
   and edit mode steps the simulation, so scrubbing shows the particles.
+- **FMOD** (in the `Tide.FMOD` assembly; add `TIDE_FMOD` to the project's
+  scripting define symbols, since FMOD for Unity is not a UPM package Tide
+  can detect): the FMOD track plays an event during its clips, attached to
+  the bound transform. Playing, seeking, pausing and looping place the event
+  at the clip-local time; during playback it runs on its own, so jumping
+  around a piece keeps the sound in place without fighting FMOD's timing.
 - **Phase integration:** components whose effects accumulate at an adjustable
   rate (a speed you can animate) implement `ITidePhaseTarget`; the player
   integrates their rates over the whole timeline into a table when it binds,
