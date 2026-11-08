@@ -11,7 +11,11 @@ namespace Tide.Editor
     public partial class TideEditorWindow
     {
         private const float HeaderWidth = 240f;
-        private const float DetailsWidth = 300f;
+        private const float DefaultDetailsWidth = 300f;
+        private const float MinDetailsWidth = 200f;
+        // Room the timeline keeps right of the track headers when the details panel widens
+        private const float MinTimelineWidth = 120f;
+        private const float SplitterGrab = 6f;
         private const float RulerHeight = 22f;
         private const float TrackHeight = 40f;
         private const float GroupHeight = 20f;
@@ -64,6 +68,7 @@ namespace Tide.Editor
         private void OnGUI()
         {
             int dragControl = GUIUtility.GetControlID(FocusType.Passive);
+            int splitterControl = GUIUtility.GetControlID(FocusType.Passive);
             float top = EditorStyles.toolbar.fixedHeight;
             // Before any control: a clicked button, foldout or object field keeps keyboard focus
             // and would otherwise take Space (or open its picker) instead of the timeline
@@ -71,11 +76,14 @@ namespace Tide.Editor
                 HandleKeys();
             DrawToolbar();
 
-            float detailsWidth = detailsVisible ? DetailsWidth : 0f;
-            var main = new Rect(0f, top, position.width - detailsWidth, position.height - top);
+            float panelWidth = detailsVisible ? DetailsPanelWidth() : 0f;
+            var main = new Rect(0f, top, position.width - panelWidth, position.height - top);
+            // Before the rows, so a press on the panel's edge resizes instead of clicking a lane
+            if (detailsVisible)
+                HandleDetailsSplitter(new Rect(main.xMax - SplitterGrab * 0.5f, top, SplitterGrab, main.height), splitterControl);
             EditorGUI.DrawRect(main, TideStyles.Background);
             if (detailsVisible)
-                DrawDetails(new Rect(main.xMax, top, detailsWidth, main.height));
+                DrawDetails(new Rect(main.xMax, top, panelWidth, main.height));
 
             if (timeline == null)
             {

@@ -18,6 +18,51 @@ namespace Tide.Editor
         };
 
         private Vector2 _detailsScroll;
+        // Pointer distance from the panel's left edge while the splitter is dragged
+        private float _splitterGrab;
+
+        // The saved width, narrowed while the window is too small to fit it
+        private float DetailsPanelWidth()
+        {
+            float max = Mathf.Max(MinDetailsWidth, position.width - HeaderWidth - MinTimelineWidth);
+            return Mathf.Clamp(detailsWidth, MinDetailsWidth, max);
+        }
+
+        // Drag the panel's left edge to resize it; double-click restores the default width
+        private void HandleDetailsSplitter(Rect splitter, int control)
+        {
+            Event e = Event.current;
+            bool dragging = GUIUtility.hotControl == control;
+            // While dragging, keep the cursor even when the pointer runs ahead of the edge
+            EditorGUIUtility.AddCursorRect(dragging ? new Rect(0f, 0f, position.width, position.height) : splitter,
+                MouseCursor.ResizeHorizontal);
+            switch (e.GetTypeForControl(control))
+            {
+                case EventType.MouseDown when e.button == 0 && splitter.Contains(e.mousePosition):
+                    if (e.clickCount == 2)
+                    {
+                        detailsWidth = DefaultDetailsWidth;
+                    }
+                    else
+                    {
+                        GUIUtility.hotControl = control;
+                        _splitterGrab = e.mousePosition.x - (position.width - DetailsPanelWidth());
+                    }
+                    e.Use();
+                    Repaint();
+                    break;
+                case EventType.MouseDrag when dragging:
+                    detailsWidth = position.width - (e.mousePosition.x - _splitterGrab);
+                    detailsWidth = DetailsPanelWidth();
+                    e.Use();
+                    Repaint();
+                    break;
+                case EventType.MouseUp when dragging:
+                    GUIUtility.hotControl = 0;
+                    e.Use();
+                    break;
+            }
+        }
 
         private void DrawDetails(Rect rect)
         {
