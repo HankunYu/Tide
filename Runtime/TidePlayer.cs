@@ -61,6 +61,9 @@ namespace Tide
         private bool _bound;
         private bool _playing;
         private double _time;
+        // The frame Play was called in: that frame shows the time playback
+        // starts from, so its Update must not advance it
+        private int _playFrame = -1;
         // The player whose sub-timeline track drives this one, if any
         private TidePlayer _driver;
 
@@ -192,6 +195,10 @@ namespace Tide
         {
             if (!_playing || _driver != null || timeline == null)
                 return;
+            // Play, called earlier this frame (from Start, say), already
+            // showed where playback starts; time moves on from the next frame
+            if (_playFrame == UnityEngine.Time.frameCount)
+                return;
 
             double previous = _time;
             _time = NextTime();
@@ -235,6 +242,7 @@ namespace Tide
                 _time = 0.0;
             Bind();
             _playing = true;
+            _playFrame = UnityEngine.Time.frameCount;
             PlayAudioClock();
             EvaluateAt(_time, _time, false, false);
         }
