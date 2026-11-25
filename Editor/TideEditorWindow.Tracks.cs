@@ -69,12 +69,14 @@ namespace Tide.Editor
         {
             int dragControl = GUIUtility.GetControlID(FocusType.Passive);
             int splitterControl = GUIUtility.GetControlID(FocusType.Passive);
-            float top = EditorStyles.toolbar.fixedHeight;
+            // Two toolbar rows: playback above, tracks below
+            float top = EditorStyles.toolbar.fixedHeight * 2f;
             // Before any control: a clicked button, foldout or object field keeps keyboard focus
             // and would otherwise take Space (or open its picker) instead of the timeline
             if (timeline != null)
                 HandleKeys();
-            DrawToolbar();
+            DrawPlaybackToolbar();
+            DrawTrackToolbar();
 
             float panelWidth = detailsVisible ? DetailsPanelWidth() : 0f;
             var main = new Rect(0f, top, position.width - panelWidth, position.height - top);
@@ -116,13 +118,11 @@ namespace Tide.Editor
 
         // ------------------------------------------------------------------ toolbar
 
-        private void DrawToolbar()
+        // What plays and where the playhead is; right: what the window edits
+        private void DrawPlaybackToolbar()
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                // Left: finding tracks and playback; right: what the window edits
-                DrawFilterField();
-                GUILayout.Space(6f);
                 if (GUILayout.Button(EditorGUIUtility.IconContent("Animation.FirstKey"), EditorStyles.toolbarButton, GUILayout.Width(28f)))
                     SetTime(0.0);
                 if (GUILayout.Button(EditorGUIUtility.IconContent(IsPlaying ? "PauseButton" : "PlayButton"), EditorStyles.toolbarButton,
@@ -131,11 +131,28 @@ namespace Tide.Editor
                 if (GUILayout.Button(EditorGUIUtility.IconContent("Animation.LastKey"), EditorStyles.toolbarButton, GUILayout.Width(28f)))
                     SetTime(Duration);
 
+                // Delayed: the playhead jumps once, on Enter or when the field loses focus,
+                // not to every number typed on the way
                 EditorGUI.BeginChangeCheck();
-                double newTime = EditorGUILayout.DoubleField(Math.Round(time, 3), EditorStyles.toolbarTextField, GUILayout.Width(60f));
+                // (The rect overloads: the label-less layout ones log an error on every repaint)
+                Rect timeRect = GUILayoutUtility.GetRect(60f, EditorGUIUtility.singleLineHeight, EditorStyles.toolbarTextField,
+                    GUILayout.Width(60f));
+                double newTime = EditorGUI.DelayedDoubleField(timeRect, GUIContent.none, Math.Round(time, 3), EditorStyles.toolbarTextField);
                 if (EditorGUI.EndChangeCheck())
                     SetTime(newTime);
-                GUILayout.Label($"s  f{Math.Round(time / FrameDuration)}", EditorStyles.miniLabel, GUILayout.Width(60f));
+                GUILayout.Label("s", EditorStyles.miniLabel, GUILayout.Width(12f));
+
+                using (new EditorGUI.DisabledScope(timeline == null))
+                {
+                    EditorGUI.BeginChangeCheck();
+                    Rect frameRect = GUILayoutUtility.GetRect(50f, EditorGUIUtility.singleLineHeight, EditorStyles.toolbarTextField,
+                        GUILayout.Width(50f));
+                    int newFrame = EditorGUI.DelayedIntField(frameRect, GUIContent.none, timeline != null ? timeline.TimeToFrame(time) : 0,
+                        EditorStyles.toolbarTextField);
+                    if (EditorGUI.EndChangeCheck())
+                        SetTime(timeline.FrameToTime(newFrame));
+                }
+                GUILayout.Label("f", EditorStyles.miniLabel, GUILayout.Width(12f));
 
                 using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
                 {
@@ -143,13 +160,13 @@ namespace Tide.Editor
                     previewEnabled = GUILayout.Toggle(previewEnabled, "Preview", EditorStyles.toolbarButton, GUILayout.Width(60f));
                     if (EditorGUI.EndChangeCheck())
                         ApplyPreview();
-                }
 
-                using (new EditorGUI.DisabledScope(timeline == null))
-                {
-                    if (EditorGUILayout.DropdownButton(new GUIContent("Add Track"), FocusType.Passive, EditorStyles.toolbarDropDown,
-                            GUILayout.Width(80f)))
-                        ShowAddTrackMenu();
+                    // Play mode runs at the player's speed alone
+                    int speedIndex = Mathf.Max(0, Array.IndexOf(PreviewSpeeds, EditorApplication.isPlaying ? 1f : previewSpeed));
+                    int newSpeedIndex = EditorGUILayout.Popup(speedIndex, PreviewSpeedLabels, EditorStyles.toolbarPopup,
+                        GUILayout.Width(52f));
+                    if (newSpeedIndex != speedIndex)
+                        previewSpeed = PreviewSpeeds[newSpeedIndex];
                 }
 
                 GUILayout.FlexibleSpace();
@@ -165,6 +182,24 @@ namespace Tide.Editor
 
                 if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(40f)))
                     CreateTimeline();
+            }
+        }
+
+        // Finding and adding tracks; right: how the view below shows them
+        private void DrawTrackToolbar()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            {
+                DrawFilterField();
+                GUILayout.Space(6f);
+                using (new EditorGUI.DisabledScope(timeline == null))
+                {
+                    if (EditorGUILayout.DropdownButton(new GUIContent("Add Track"), FocusType.Passive, EditorStyles.toolbarDropDown,
+                            GUILayout.Width(80f)))
+                        ShowAddTrackMenu();
+                }
+
+                GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Fit", EditorStyles.toolbarButton, GUILayout.Width(32f)))
                     FitView();
                 detailsVisible = GUILayout.Toggle(detailsVisible, "Details", EditorStyles.toolbarButton, GUILayout.Width(52f));
@@ -914,10 +949,10 @@ namespace Tide.Editor
                     SetTime(Duration);
                     break;
                 case KeyCode.LeftArrow:
-                    SetTime(Math.Round(time / FrameDuration - 1.0) * FrameDuration);
+                    SetTime(timeline.FrameToTime(timeline.TimeToFrame(time) - 1));
                     break;
                 case KeyCode.RightArrow:
-                    SetTime(Math.Round(time / FrameDuration + 1.0) * FrameDuration);
+                    SetTime(timeline.FrameToTime(timeline.TimeToFrame(time) + 1));
                     break;
                 case KeyCode.F when !e.control && !e.command:
                     FitView();
@@ -1135,7 +1170,7 @@ namespace Tide.Editor
                 return t;
             if (_drag != DragMode.Scrub && Math.Abs(t - time) * pixelsPerSecond < SnapPixels)
                 return time;
-            return Math.Round(t / FrameDuration) * FrameDuration;
+            return timeline.FrameToTime(timeline.TimeToFrame(t));
         }
     }
 }

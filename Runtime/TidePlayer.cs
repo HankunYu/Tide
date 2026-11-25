@@ -166,6 +166,9 @@ namespace Tide
 
         public double CurrentTime => _time;
 
+        /// <summary>The frame nearest to the current time, counted at the timeline's frame rate.</summary>
+        public int CurrentFrame => timeline != null ? timeline.TimeToFrame(_time) : 0;
+
         public double Duration => timeline != null ? timeline.Duration : 0.0;
 
         public bool IsPlaying => _playing;
@@ -277,6 +280,17 @@ namespace Tide
             SeekAudioClock();
             Bind();
             EvaluateAt(_time, _time, false, false);
+        }
+
+        /// <summary>
+        /// Jumps to <paramref name="frame"/> like <see cref="Seek"/>. Frames are counted at the
+        /// timeline's frame rate, which need not be the rate the game renders or a capture runs at.
+        /// </summary>
+        public void SeekFrame(int frame)
+        {
+            if (timeline == null)
+                return;
+            Seek(timeline.FrameToTime(frame));
         }
 
         public Object GetBinding(TideTrack track)

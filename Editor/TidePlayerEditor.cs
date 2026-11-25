@@ -55,7 +55,7 @@ namespace Tide.Editor
                 TideEditorWindow.Open(player);
 
             if (Application.isPlaying)
-                EditorGUILayout.LabelField("Time", $"{player.CurrentTime:0.000} / {player.Duration:0.###} s");
+                EditorGUILayout.LabelField("Time", $"{player.CurrentTime:0.000} / {player.Duration:0.###} s   f{player.CurrentFrame}");
 
             DrawBindings(player);
         }

@@ -23,12 +23,18 @@ namespace Tide.Editor
     {
         private const string Title = "Tide";
 
+        // How fast edit-mode preview plays, on top of the player's own speed
+        private static readonly float[] PreviewSpeeds = { 0.25f, 0.5f, 1f, 2f, 4f };
+        private static readonly string[] PreviewSpeedLabels = { "0.25×", "0.5×", "1×", "2×", "4×" };
+
         [SerializeField] private TidePlayer player;
         [SerializeField] private TideTimeline timeline;
         [SerializeField] private double time;
         [SerializeField] private double viewStart;
         [SerializeField] private float pixelsPerSecond = 80f;
         [SerializeField] private bool previewEnabled = true;
+        // A way of watching, kept by the window: the scene and the player's speed stay as they are
+        [SerializeField] private float previewSpeed = 1f;
         [SerializeField] private bool detailsVisible = true;
         [SerializeField] private float detailsWidth = DefaultDetailsWidth;
 
@@ -165,8 +171,6 @@ namespace Tide.Editor
         }
 
         private double Duration => timeline != null ? timeline.Duration : 10.0;
-
-        private double FrameDuration => timeline != null ? 1.0 / timeline.FrameRate : 1.0 / 30.0;
 
         // Bindings and preview need the player to play this very timeline
         private bool PlayerPlaysTimeline => player != null && timeline != null && player.Timeline == timeline;
@@ -310,7 +314,7 @@ namespace Tide.Editor
                 return;
 
             double now = EditorApplication.timeSinceStartup;
-            double next = time + (now - _lastTick) * (player != null ? player.PlaybackSpeed : 1f);
+            double next = time + (now - _lastTick) * (player != null ? player.PlaybackSpeed : 1f) * previewSpeed;
             _lastTick = now;
             if (next >= Duration)
             {

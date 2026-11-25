@@ -61,7 +61,10 @@ Unity then treats it as an editable embedded package.
 2. Add a **Tide Player** to a GameObject (*Add Component > Tide > Tide Player*)
    and assign the asset.
 3. *Window > Tide* opens the editor. Drag scene objects onto it to add tracks
-   bound to them, add clips, and scrub to preview in edit mode.
+   bound to them, add clips, and scrub to preview in edit mode. Type a time
+   or a frame number in the toolbar to jump there (from scripts,
+   `TidePlayer.Seek` and `SeekFrame`). The speed next to Preview only changes
+   how fast edit-mode preview plays; the player keeps its own playback speed.
 
 The asset never references the scene: each player keeps its own binding per
 track, so one timeline can be played by several players.

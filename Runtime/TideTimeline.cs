@@ -16,7 +16,7 @@ namespace Tide
         [Tooltip("Length in seconds; where playback holds, loops or stops")]
         [SerializeField] private double duration = 10.0;
 
-        [Tooltip("Frames per second the editor snaps to")]
+        [Tooltip("Frames per second: what frame numbers count, the editor snaps to and phase tables are sampled at")]
         [Min(1f)]
         [SerializeField] private float frameRate = 30f;
 
@@ -35,6 +35,18 @@ namespace Tide
         }
 
         public IReadOnlyList<TideTrack> Tracks => tracks;
+
+        /// <summary>The frame nearest to <paramref name="time"/>, counted at <see cref="FrameRate"/>.</summary>
+        public int TimeToFrame(double time)
+        {
+            return (int)Math.Round(time * frameRate);
+        }
+
+        /// <summary>The time in seconds at which <paramref name="frame"/> starts.</summary>
+        public double FrameToTime(int frame)
+        {
+            return frame / (double)frameRate;
+        }
 
         public void AddTrack(TideTrack track)
         {

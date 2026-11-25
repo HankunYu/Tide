@@ -19,7 +19,7 @@ namespace Tide.Editor
         private void DrawFilterField()
         {
             _filterField ??= new SearchField();
-            string value = _filterField.OnToolbarGUI(trackFilter, GUILayout.Width(180f));
+            string value = _filterField.OnToolbarGUI(trackFilter, GUILayout.Width(220f));
             if (value == trackFilter)
                 return;
             trackFilter = value;
